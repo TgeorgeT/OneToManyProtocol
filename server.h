@@ -25,7 +25,7 @@ void init_server(uint16_t port)
     bind(server_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 }
 
-void handle_new_connection(struct sockaddr_in cli_addr)
+void handle_new_connection(char client_message[], struct sockaddr_in cli_addr)
 {
 
     int32_t sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -52,6 +52,7 @@ void handle_new_connection(struct sockaddr_in cli_addr)
 
     char *buf = new char[6];
     sprintf(buf, "%d", ntohs(new_client->sin_port));
+    printf("buf = %s\n", buf);
     int n = sendto(sockfd, buf, strlen(buf), 0, (struct sockaddr *)&cli_addr, sizeof(cli_addr));
 
     cout << n << "\n";
@@ -61,13 +62,18 @@ void listen_server()
 {
     int n;
     struct sockaddr_in cli_addr;
-    char *buffer = new char[1024];
+    char *buffer = new char[10];
     socklen_t len;
     while (1)
     {
         bzero(&cli_addr, sizeof(cli_addr));
-        n = recvfrom(server_sockfd, (char *)buffer, 1024, 0, (struct sockaddr *)&cli_addr,
+        len = sizeof(struct sockaddr_in);
+        n = recvfrom(server_sockfd, buffer, 10, 0, (struct sockaddr *)&cli_addr,
                      &len);
-        handle_new_connection(cli_addr);
+        buffer[n] = '\0';
+        if (n > 0)
+        {
+            handle_new_connection(buffer, cli_addr);
+        }
     }
 }
