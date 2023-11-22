@@ -37,8 +37,8 @@ int connect_to_server(const char *server_ip, uint16_t server_port)
 
     cout << serv_addr.sin_port << "\n";
 
-    char *message = new char[2];
-    sprintf(message, "%s", "0");
+    char *message = new char[10];
+    sprintf(message, "%d", ntohs(client_addr.sin_port));
 
     ssize_t bytes_sent = sendto(client_sockfd, message, strlen(message), 0,
                                 (struct sockaddr *)&serv_addr, sizeof(serv_addr));
@@ -55,10 +55,19 @@ int connect_to_server(const char *server_ip, uint16_t server_port)
 
     socklen_t len = sizeof(struct sockaddr_in);
 
-    ssize_t bytes_received = recvfrom(client_sockfd, buf, strlen(buf), 0,
+    ssize_t bytes_received = recvfrom(client_sockfd, buf, 10, 0,
                                       (struct sockaddr *)&serv_addr, &len);
+    cout << "port ="
+         << ntohs(serv_addr.sin_port) << "\n";
     printf("bytes: %d\n", bytes_received);
     buf[bytes_received] = '\0';
-    printf("%s\n", bytes_received);
+    printf("%d\n", bytes_received);
+    printf("123123132\n");
     return 0;
+}
+
+int receive_from_server(char *buf, size_t *len)
+{
+    int n = recvfrom(client_sockfd, buf, 100, 0, NULL, NULL);
+    return n;
 }
