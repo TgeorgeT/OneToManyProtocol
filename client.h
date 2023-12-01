@@ -61,13 +61,21 @@ int connect_to_server(const char *server_ip, uint16_t server_port)
          << ntohs(serv_addr.sin_port) << "\n";
     printf("bytes: %d\n", bytes_received);
     buf[bytes_received] = '\0';
-    printf("%d\n", bytes_received);
-    printf("123123132\n");
     return 0;
 }
 
-int receive_from_server(char *buf, size_t *len)
+int receive_from_server(char *buf, const size_t *len)
 {
     int n = recvfrom(client_sockfd, buf, 100, 0, NULL, NULL);
     return n;
+}
+
+void send_to_server(const char *buf, size_t len)
+{
+
+    struct sock;
+
+    socklen_t addr_len = sizeof(struct sockaddr_in);
+    cout << buf << "\n";
+    int n = sendto(client_sockfd, buf, len, 0, (struct sockaddr *)&serv_addr, addr_len);
 }
