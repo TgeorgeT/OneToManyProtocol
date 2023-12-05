@@ -35,6 +35,9 @@ int connect_to_server(const char *server_ip, uint16_t server_port)
     inet_pton(AF_INET, server_ip, &(serv_addr.sin_addr));
     serv_addr.sin_port = htons(server_port);
 
+    serv_addr.sin_family = AF_INET;
+    inet_pton(AF_INET, server_ip, &(serv_addr.sin_addr));
+    serv_addr.sin_port = htons(server_port);
     cout << serv_addr.sin_port << "\n";
 
     char *message = new char[10];

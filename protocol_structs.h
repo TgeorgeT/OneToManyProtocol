@@ -15,3 +15,16 @@ struct channel
     {
     }
 };
+
+struct packet_data
+{
+    int32_t flags;
+    int32_t ack;
+    int32_t seq;
+};
+
+struct packet
+{
+    packet_data data;
+    const char *payload;
+};

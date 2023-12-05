@@ -59,7 +59,7 @@ public:
 
     void listen();
 
-    void send_to_all(const char *buf, size_t *length);
+    void send_to_all(const char *buf, size_t length);
     void send_to_channel(const char *buf, size_t *length, uint32_t channel_number);
 
     std::string receive_from_channel(uint32_t channel_number);
@@ -142,13 +142,13 @@ Server::Server() : channel_count(initial_channel_number)
     this->receivers = new thread_pool(THREAD_POOL_SIZE);
 };
 
-void Server::send_to_all(const char *buf, size_t *length)
+void Server::send_to_all(const char *buf, size_t length)
 {
 
     for (auto it = channels.begin(); it != channels.end(); ++it)
     {
         senders->enqueue([this, it, buf, length]
-                         { sendto(it->second->socket, buf, *length, 0, (const sockaddr *)&((it->second)->cli_addr), sizeof((it->second)->cli_addr)); });
+                         { sendto(it->second->socket, buf, length, 0, (const sockaddr *)&((it->second)->cli_addr), sizeof((it->second)->cli_addr)); });
     }
 }
 
@@ -158,7 +158,7 @@ void Server::send_to_channel(const char *buf, size_t *length, uint32_t channel_n
 
     if (it == channels.end())
     {
-        printf("Canalul nu exista\n");
+        throw new std::runtime_error("channel_not_exist");
         return;
     }
 
