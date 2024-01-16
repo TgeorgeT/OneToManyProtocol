@@ -1,19 +1,22 @@
-#include <iostream>
 #include "server.h"
-#include <iostream>
-
-using std::cin;
-using std::cout;
 
 int main()
 {
-    Server server = Server();
+    Server server;
     server.init_server(4001);
     server.listen();
-    while (1)
+    for (;;)
     {
-        sleep(1);
-        size_t len = 5;
-        server.send_to_channel("1213", &len, 2);
+        cout << "size = " << server.client_sockets.size() << "\n";
+        try
+        {
+            sleep(1);
+            cout << server.receive_from_any() << "\n";
+            server.send_to_all("cefaci\n", 6);
+        }
+        catch (std::runtime_error e)
+        {
+            cout << "channel not exist\n";
+        }
     }
 }

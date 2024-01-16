@@ -2,6 +2,8 @@
 #include <iostream>
 #include <mutex>
 
+#ifndef structs
+#define structs
 struct channel
 {
     int32_t socket;
@@ -21,10 +23,14 @@ struct packet_data
     int32_t flags;
     int32_t ack;
     int32_t seq;
+    int32_t payload_len;
+    int32_t checksum;
 };
 
 struct packet
 {
     packet_data data;
-    const char *payload;
+    // const char *payload;
 };
+
+#endif

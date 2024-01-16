@@ -50,8 +50,7 @@ int connect_to_server(const char *server_ip, uint16_t server_port)
     printf("%d\n", bytes_sent);
     if (bytes_sent <= 0)
     {
-        printf("Error sending initilization packet\n");
-        return -1;
+        throw std::runtime_error("error_initialization");
     }
 
     char *buf = new char[10];
@@ -75,10 +74,13 @@ int receive_from_server(char *buf, const size_t *len)
 
 void send_to_server(const char *buf, size_t len)
 {
-
-    struct sock;
-
     socklen_t addr_len = sizeof(struct sockaddr_in);
     cout << buf << "\n";
     int n = sendto(client_sockfd, buf, len, 0, (struct sockaddr *)&serv_addr, addr_len);
+}
+
+void unreliable_announce_end()
+{
+    socklen_t addr_len = sizeof(struct sockaddr_in);
+    int n = sendto(client_sockfd, "unreliable_end", 14, 0, (struct sockaddr *)&serv_addr, addr_len);
 }

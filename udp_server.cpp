@@ -4,6 +4,7 @@
 #include <strings.h>
 #include <iostream>
 #include "protocol_structs.h"
+#include "utils.h"
 #include <string.h>
 using std::cout;
 
@@ -32,17 +33,17 @@ int main()
                      &len);
         buffer[n] = '\0';
 
-        packet_data *pd;
+        int *nb;
 
-        cout << n << "\n";
-        memcpy(pd, buffer, sizeof(packet_data));
+        cout << (int)buffer[0] << " " << (int)buffer[1] << "\n";
+        cout << "n =" << n << "\n";
 
-        cout << pd->seq << "\n";
-        cout << pd->ack << "\n";
-        cout << sizeof(packet_data) << "\n";
-        // cout << pd->flags << "\n";
+        // memcpy(nb, buffer, 4);
 
-        // nr_packet *np = (nr_packet *)&buffer;
-        // cout << np->number << "\n";
+        cout << htonl(*nb) << "\n";
+
+        cout << buffer << "\n";
+
+        // desirialize_packet(buffer, n);
     }
 }
