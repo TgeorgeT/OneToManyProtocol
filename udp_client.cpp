@@ -24,7 +24,7 @@ int main()
     inet_pton(AF_INET, "127.0.0.1", &(serv_addr.sin_addr));
     serv_addr.sin_port = htons(4001);
 
-    char *seralized = new char[PACKET_SIZE];
+    char seralized [PACKET_SIZE];
 
     serialize_packet(&p, seralized);
 
@@ -35,5 +35,4 @@ int main()
     int n = sendto(sockfd, (void *)&seralized, 20, 0, (sockaddr *)&serv_addr, sizeof(sockaddr_in));
     cout << n << "\n";
 
-    delete seralized;
 }
