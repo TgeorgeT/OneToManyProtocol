@@ -26,7 +26,7 @@ int main()
 
     char seralized [PACKET_SIZE];
 
-    serialize_packet(&p, seralized);
+    serialize_packet(&p, seralized, sizeof(p));
 
     cout << (int)seralized[0] << " " << (int)seralized[1] << "\n";
 
