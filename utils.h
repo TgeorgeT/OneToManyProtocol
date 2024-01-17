@@ -2,7 +2,7 @@
 #include "protocol_consts.h"
 #include <string.h>
 
-void serialize_packet(const packet *p, char *serialized)
+void serialize_packet(const packet *p,const char *serialized)
 {
     memcpy(serialized, &(p->data), sizeof(p->data));
     // char *ptr = serialized + sizeof(p->data);
