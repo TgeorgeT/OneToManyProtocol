@@ -23,14 +23,9 @@ struct packet_data
     int32_t flags;
     int32_t ack;
     int32_t seq;
-    int32_t payload_len;
     int32_t checksum;
-};
-
-struct packet
-{
-    packet_data data;
-    // const char *payload;
+    int32_t payload_len;
+    char *payload;
 };
 
 #endif
