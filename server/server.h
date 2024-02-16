@@ -6,13 +6,13 @@
 #include <iostream>
 #include <errno.h>
 #include <thread>
-#include "protocol_structs.h"
+#include "../utils/protocol_structs.h"
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "thread_pool.h"
+#include "../thread_pool/thread_pool.h"
 #include <mutex>
-#include "protocol_consts.h"
+#include "../utils/protocol_consts.h"
 #include <sys/select.h>
 
 const uint16_t initial_channel_number = 0;
@@ -43,11 +43,13 @@ public:
     fd_set clients_sockets_set;
     timeval select_timeval;
 
-    std::mutex modify_sock_set;
-    std::mutex modify_channels_send_lock1;
-    std::mutex modify_channels_send_lockn;
-    std::mutex modify_channels_receive_lock1;
-    std::mutex modify_channels_receive_lockn;
+    std::mutex universal_lock;
+
+    // std::mutex modify_sock_set;
+    // std::mutex modify_channels_send_lock1;
+    // std::mutex modify_channels_send_lockn;
+    // std::mutex modify_channels_receive_lock1;
+    // std::mutex modify_channels_receive_lockn;
 
     void listen_server();
 
@@ -81,10 +83,12 @@ public:
 void Server::receiver_function(const char *message, sockaddr_in sender_addr)
 {
     channel *sender_channel;
-    sender_channel = channels[ip_to_channel[sender_addr.sin_addr.s_addr]];
     {
-        unique_lock<mutex> que_lock(sender_channel->receive_que_lock);
-        sender_channel->receive_que.push_back(message);
+        unique_lock<mutex> lock(universal_lock);
+        sender_channel = channels[ip_to_channel[sender_addr.sin_addr.s_addr]];
+        {
+            sender_channel->receive_que.push_back(message);
+        }
     }
 }
 
@@ -98,37 +102,27 @@ std::string Server::receive_from_channel(uint32_t channel_number)
     std::string receive_buf;
     while (1)
     {
-        unique_lock<mutex> queue_lock(receive_channel->receive_que_lock);
         if (receive_channel->receive_que.empty())
         {
             continue;
         }
         receive_buf = std::move(receive_channel->receive_que.front());
         receive_channel->receive_que.pop_front();
+
+        cout<<receive_buf<<"\n";
         if (receive_buf == "unreliable_end")
         {
             try
-            {
-                {
-                    unique_lock<mutex> lock1(read_set_delete_lock);
-                    unique_lock<mutex> lock2(modify_channels_send_lock1);
-                    unique_lock<mutex> lock3(modify_channels_send_lockn);
-                    unique_lock<mutex> lock4(modify_channels_receive_lock1);
-                    unique_lock<mutex> lock5(modify_channels_receive_lockn);
-
-                    std::lock(lock1, lock2, lock3, lock4, lock5);
-                    close(receive_channel->socket);
-                    client_sockets.erase(receive_channel->socket);
-                    channels.erase(channel_number);
-                    delete receive_channel;
-
-                    return "connection_closed\n";
-                }
+           {     
+                unique_lock<mutex> lock(universal_lock);
+                close(receive_channel->socket);
+                channels.erase(channel_number);
+                client_sockets.erase(receive_channel->socket);
+                cout << "connection_closed\n";
+                return "connection_closed\n";
             }
             catch (...)
             {
-                printf("ERROR ON CLOSING CHANNEL\n");
-
                 return "unreliable_close_error\n";
             }
         }
@@ -151,7 +145,8 @@ void Server::handle_receive_packet()
     for (;;)
     {
         {
-            unique_lock<mutex> lock(this->read_set_delete_lock);
+
+            unique_lock<mutex> lock(universal_lock);
             memcpy(&read_set, &(this->clients_sockets_set), sizeof(this->clients_sockets_set));
 
             if (select(nfds, &read_set, NULL, NULL, &(this->select_timeval)))
@@ -188,40 +183,35 @@ Server::Server() : channel_count(initial_channel_number)
 
 void Server::send_to_all(const char *buf, size_t length)
 {
-    unique_lock<mutex> lock(modify_channels_lockn);
-    std::lock(lock);
-    for (auto it = channels.begin(); it != channels.end(); ++it)
     {
-        senders->enqueue([this, it, buf, length]
-                         { sendto(it->second->socket, buf, length, 0, (const sockaddr *)&((it->second)->cli_addr), sizeof((it->second)->cli_addr)); });
+        unique_lock<mutex> lock(universal_lock);
+        for (auto it = channels.begin(); it != channels.end(); ++it)
+        {
+            senders->enqueue([this, it, buf, length]
+                             { sendto(it->second->socket, buf, length, 0, (const sockaddr *)&((it->second)->cli_addr), sizeof((it->second)->cli_addr)); });
+        }
     }
 }
 
 void Server::send_to_channel(const char *buf, size_t length, uint32_t channel_number)
 {
-    unique_lock<mutex> lock(modify_channels_lock1);
-    std::lock(lock);
-    auto it = channels.find(channel_number);
-
-    if (it == channels.end())
     {
-        cout << "am aruncat de aici\n";
-        throw std::runtime_error("channel_not_exist");
-        return;
-    }
+        unique_lock<mutex> lock(universal_lock);
 
-    senders->enqueue([this, it, buf, length]
-                     { sendto(it->second->socket, buf, length, 0, (const sockaddr *)&((it->second)->cli_addr), sizeof((it->second)->cli_addr)); });
+        auto it = channels.find(channel_number);
+
+        if (it == channels.end())
+        {
+            throw std::runtime_error("channel_not_exist");
+        }
+
+        senders->enqueue([this, it, buf, length]
+                         { sendto(it->second->socket, buf, length, 0, (const sockaddr *)&((it->second)->cli_addr), sizeof((it->second)->cli_addr)); });
+    }
 }
 
 void Server::create_new_channel(int32_t client_socket, sockaddr_in cli_addr)
 {
-
-    unique_lock<mutex> lock1(modify_sock_set);
-    unique_lock<mutex> lock2(modify_channels_send_lock1);
-    unique_lock<mutex> lock3(modify_channels_send_lockn);
-    unique_lock<mutex> lock4(modify_channels_receive_lock1);
-    unique_lock<mutex> lock5(modify_channels_receive_lockn);
 
     channel *new_channel = new channel(
         client_socket,
@@ -234,18 +224,13 @@ void Server::create_new_channel(int32_t client_socket, sockaddr_in cli_addr)
     }
 
     channels[new_channel->channel_number] = new_channel;
-
-    cout << "channel created\n";
 }
-
 void Server::listen_server()
 {
     int n;
     struct sockaddr_in cli_addr;
     char *buffer = new char[10];
     socklen_t len;
-
-    cout << buffer << "\n";
 
     for (;;)
     {
