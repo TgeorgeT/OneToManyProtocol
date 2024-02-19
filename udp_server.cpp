@@ -10,17 +10,17 @@ int main()
     server.listen();
     for (;;)
     {
-        try
-        {
-            sleep(2);
-            cout << "channel 1 = " << server.receive_from_channel(1) << "\n";
-            // cout << "channel 2 = " << server.receive_from_channel(2) << "\n";
-            // cout << "channel 3 = " << server.receive_from_channel(3) << "\n";
-        }
-        catch (...)
-        {
-            
-            //cout << "channel not exist\n";        
-        }
+        // try
+        // {
+        //     sleep(2);
+        //     cout << "channel 1 = " << server.receive_from_channel(1) << "\n";
+        //     // cout << "channel 2 = " << server.receive_from_channel(2) << "\n";
+        //     // cout << "channel 3 = " << server.receive_from_channel(3) << "\n";
+        // }
+        // catch (...)
+        // {
+
+        //     //cout << "channel not exist\n";
+        // }
     }
 }

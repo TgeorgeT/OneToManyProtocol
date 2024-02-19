@@ -3,16 +3,28 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include "../utils/protocol_structs.h"
+#include "../utils/xdr_serialization.h"
+#include <rpc/xdr.h>
+#include "../utils/helper_functions.h"
+#include "../utils/protocol_consts.h"
 
 using std::cout;
 
 struct sockaddr_in serv_addr;
 struct sockaddr_in client_addr;
 
+char recv_buffer[MAX_TRANSMITTED_LEN];
+char send_buffer[MAX_TRANSMITTED_LEN];
+
+XDR xdr_recv, xdr_send;
+
 int32_t server_sockfd;
 int32_t client_sockfd;
 
-int init_client(uint16_t local_port)
+// DEAL WITH RECVFROM TIMEOUT
+
+void init_client(uint16_t local_port)
 {
     client_addr.sin_family = AF_INET;
     client_addr.sin_addr.s_addr = INADDR_ANY;
@@ -20,12 +32,66 @@ int init_client(uint16_t local_port)
 
     if ((client_sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
-        printf("Error on binding client socket: %s\n", strerror(errno));
-        return -1;
+        throw std::runtime_error("server_init_error\n");
     }
 
     bind(client_sockfd, (struct sockaddr *)&client_addr, sizeof(client_addr));
-    return 0;
+}
+
+void reliable_connect_to_server(const char *server_ip, uint16_t server_port)
+{
+
+    xdrmem_create(&xdr_send, send_buffer, sizeof(send_buffer), XDR_ENCODE);
+    xdrmem_create(&xdr_recv, recv_buffer, sizeof(recv_buffer), XDR_DECODE);
+
+    serv_addr.sin_family = AF_INET;
+    inet_pton(AF_INET, server_ip, &(serv_addr.sin_addr));
+    serv_addr.sin_port = htons(server_port);
+
+    char *message = new char[2];
+
+    message[0] = '1';
+    message[1] = '\0';
+
+    ssize_t bytes_sent = sendto(client_sockfd, message, strlen(message), 0,
+                                (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+
+    delete message;
+
+    if (bytes_sent <= 0)
+    {
+        throw std::runtime_error("connection_error");
+    }
+
+    socklen_t len;
+
+    printf("am ajuns aici\n");
+
+    int bytes_received = recvfrom(client_sockfd, recv_buffer, sizeof(recv_buffer), 0, (struct sockaddr *)&serv_addr, &len);
+    if (bytes_received < 0)
+    {
+        perror("recvfrom failed");
+        exit(EXIT_FAILURE);
+    }
+
+    packet_data data;
+    data.payload = new char[10];
+
+    if (!xdr_packet_data(&xdr_recv, &data))
+    {
+        fprintf(stdout, "Error deserializing data\n");
+        // Clean up resources properly here
+    }
+
+    xor_swap(data.ack, data.seq);
+
+    if (!xdr_packet_data(&xdr_send, &data))
+    {
+        fprintf(stderr, "Error serializing data\n");
+        // Clean up resources properly here
+    }
+
+    int bytes = sendto(client_sockfd, send_buffer, xdr_getpos(&xdr_send), 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 }
 
 int connect_to_server(const char *server_ip, uint16_t server_port)
@@ -34,11 +100,6 @@ int connect_to_server(const char *server_ip, uint16_t server_port)
     serv_addr.sin_family = AF_INET;
     inet_pton(AF_INET, server_ip, &(serv_addr.sin_addr));
     serv_addr.sin_port = htons(server_port);
-
-    serv_addr.sin_family = AF_INET;
-    inet_pton(AF_INET, server_ip, &(serv_addr.sin_addr));
-    serv_addr.sin_port = htons(server_port);
-    cout << serv_addr.sin_port << "\n";
 
     char *message = new char[10];
     sprintf(message, "%d", ntohs(client_addr.sin_port));
@@ -50,7 +111,7 @@ int connect_to_server(const char *server_ip, uint16_t server_port)
     printf("%d\n", bytes_sent);
     if (bytes_sent <= 0)
     {
-        throw std::runtime_error("error_initialization");
+        throw std::runtime_error("connection_error");
     }
 
     char *buf = new char[10];
