@@ -83,7 +83,7 @@ void Server::handle_receive_packet()
                 {
                     if (FD_ISSET(*it, &read_set))
                     {
-                        socklen = sizeof(sender);
+                        socklen = sizeof(sockaddr_in);
                         received_bytes = recvfrom(*it, buf, MAX_TRANSMITTED_LEN, 0,
                                                   (struct sockaddr *)&sender, &socklen);
                         buf[received_bytes] = '\0';
@@ -173,7 +173,8 @@ void Server::listen_server()
         len = sizeof(struct sockaddr_in);
         n = recvfrom(server_sockfd, buffer, 10, 0, (struct sockaddr *)&cli_addr,
                      &len);
-        cout << n << "\n";
+        cout << "new connection = \n"
+             << n << "\n";
         buffer[n] = '\0';
         if (n > 0)
         {
@@ -222,7 +223,7 @@ void Server::handle_new_connection(struct sockaddr_in cli_addr)
 
     struct sockaddr_in *new_client = new sockaddr_in;
 
-    bzero(new_client, sizeof(&new_client));
+    bzero(new_client, sizeof(sockaddr_in));
 
     new_client->sin_family = AF_INET;
     new_client->sin_addr.s_addr = INADDR_ANY;
@@ -233,7 +234,7 @@ void Server::handle_new_connection(struct sockaddr_in cli_addr)
         printf("New connection bind error: %s\n", strerror(errno));
     }
 
-    socklen_t len = sizeof(new_client);
+    socklen_t len = sizeof(*new_client);
 
     if (getsockname(sockfd, (struct sockaddr *)new_client, &len) == -1)
     {
@@ -247,6 +248,7 @@ void Server::handle_new_connection(struct sockaddr_in cli_addr)
     int n = sendto(sockfd, buf, strlen(buf), 0, (struct sockaddr *)&cli_addr, sizeof(cli_addr));
     cout << "n = " << n << "\n";
     create_new_channel(sockfd, cli_addr);
+    delete[] buf;
 }
 
 #
