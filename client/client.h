@@ -86,7 +86,7 @@ void reliable_connect_to_server(const char *server_ip, uint16_t server_port)
         xdr_destroy(&xdr_recv);
         xdr_destroy(&xdr_send);
     }
-    // int bytes = sendto(client_sockfd, send_buffer, xdr_getpos(&xdr_send), 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+    int bytes = sendto(client_sockfd, send_buffer, xdr_getpos(&xdr_send), 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 }
 
 int connect_to_server(const char *server_ip, uint16_t server_port)
