@@ -21,11 +21,11 @@ void Server::receiver_function(const char *message, sockaddr_in sender_addr)
 
 std::string Server::receive_from_channel(uint32_t channel_number)
 {
-    channel *receive_channel = this->channels[channel_number];
-    if (!receive_channel)
+    if (channels.find(channel_number) == channels.end())
     {
         throw std::runtime_error("channel_not_exist");
     }
+    channel *receive_channel = channels[channel_number];
     std::string receive_buf;
     while (1)
     {
@@ -43,9 +43,10 @@ std::string Server::receive_from_channel(uint32_t channel_number)
             {
                 unique_lock<mutex> lock(universal_lock);
                 close(receive_channel->socket);
+                printf("am dat erase\n ");
                 channels.erase(channel_number);
+                cout << "channel_number = " << channels.size() << "\n";
                 client_sockets.erase(receive_channel->socket);
-                cout << "connection_closed\n";
                 return "connection_closed\n";
             }
             catch (...)
@@ -116,9 +117,9 @@ void Server::send_to_all(const char *buf, size_t length)
         for (auto it = channels.begin(); it != channels.end(); ++it)
         {
 
-            std::function<void()> task = [this, it, buf, length]
-            { sendto(it->second->socket, buf, length, 0, (const sockaddr *)&((it->second)->cli_addr), sizeof((it->second)->cli_addr)); };
-            senders->enqueue(task);
+            // std::function<void()> task = [this, it, buf, length]
+            // { sendto(it->second->socket, buf, length, 0, (const sockaddr *)&((it->second)->cli_addr), sizeof((it->second)->cli_addr)); };
+            // senders->enqueue(task);
             // senders->enqueue([this, it, buf, length]
             //  { sendto(it->second->socket, buf, length, 0, (const sockaddr *)&((it->second)->cli_addr), sizeof((it->second)->cli_addr)); });
         }
@@ -136,18 +137,18 @@ void Server::send_to_channel(const char *buf, size_t length, uint32_t channel_nu
         {
             throw std::runtime_error("channel_not_exist");
         }
-        std::function<void()> task = [this, it, buf, length]
-        { sendto(it->second->socket, buf, length, 0, (const sockaddr *)&((it->second)->cli_addr), sizeof((it->second)->cli_addr)); };
-        senders->enqueue(task);
+        // std::function<void()> task = [this, it, buf, length]
+        // { sendto(it->second->socket, buf, length, 0, (const sockaddr *)&((it->second)->cli_addr), sizeof((it->second)->cli_addr)); };
+        // senders->enqueue(task);
         // senders->enqueue([this, it, buf, length]
         //  { sendto(it->second->socket, buf, length, 0, (const sockaddr *)&((it->second)->cli_addr), sizeof((it->second)->cli_addr)); });
     }
 }
 
-void Server::create_new_channel(int32_t client_socket, sockaddr_in cli_addr)
+void Server::create_new_unreliable_channel(int32_t client_socket, sockaddr_in cli_addr)
 {
 
-    channel *new_channel = new channel(
+    channel *new_channel = new unreliable_channel(
         client_socket,
         ++channel_count,
         cli_addr);
@@ -165,7 +166,7 @@ void Server::listen_server()
     struct sockaddr_in cli_addr;
     char *buffer = new char[10];
     socklen_t len;
-
+    printf("listening\n");
     for (;;)
     {
         // cout << "listening\n";
@@ -173,13 +174,17 @@ void Server::listen_server()
         len = sizeof(struct sockaddr_in);
         n = recvfrom(server_sockfd, buffer, 10, 0, (struct sockaddr *)&cli_addr,
                      &len);
+
         cout << "new connection = \n"
              << n << "\n";
         buffer[n] = '\0';
         if (n > 0)
         {
             if (buffer[0] == '0')
+            {
+                printf("new connection\n");
                 this->handle_new_connection(cli_addr);
+            }
             else
             {
                 std::thread(&Server::handle_new_reliable_connection, this, cli_addr).detach();
@@ -247,7 +252,7 @@ void Server::handle_new_connection(struct sockaddr_in cli_addr)
     printf("strlen buf = %d\n", strlen(buf));
     int n = sendto(sockfd, buf, strlen(buf), 0, (struct sockaddr *)&cli_addr, sizeof(cli_addr));
     cout << "n = " << n << "\n";
-    create_new_channel(sockfd, cli_addr);
+    create_new_unreliable_channel(sockfd, cli_addr);
     delete[] buf;
 }
 

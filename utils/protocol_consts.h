@@ -1,5 +1,5 @@
-#ifndef protocol_consts
-#define protocol_consts
+#ifndef PROTOCOL_CONSTS_H
+#define PROTOCOL_CONSTS_H 
 
 const long TIMEVAL_MICROSECONDS = 200000;
 const unsigned int THREAD_POOL_SIZE = 10;

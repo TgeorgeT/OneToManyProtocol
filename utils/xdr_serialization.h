@@ -1,9 +1,9 @@
+#ifndef XDR_SERIALIZATION_H
+#define XDR_SERIALIZATION_H
+
 #include <rpc/xdr.h>
 #include "protocol_consts.h"
 #include "protocol_structs.h"
-
-#ifndef xdr_serialization
-#define xdr_serialization
 
 bool_t xdr_packet_data(XDR *xdrs, packet_data *data)
 {

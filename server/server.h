@@ -9,7 +9,7 @@
 #include <iostream>
 #include <errno.h>
 #include <thread>
-#include "../utils/protocol_structs.h"
+#include "../utils/channel.h"
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -56,7 +56,7 @@ public:
 
     void listen_server();
 
-    void create_new_channel(int32_t client_socket, sockaddr_in cli_addr);
+    void create_new_unreliable_channel(int32_t client_socket, sockaddr_in cli_addr);
 
     void handle_new_connection(struct sockaddr_in client_addr);
 
