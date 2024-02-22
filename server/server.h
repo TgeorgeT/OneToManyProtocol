@@ -1,3 +1,6 @@
+#ifndef PROTOCOL_SERVER_H
+#define PROTOCOL_SERVER_H
+
 #include <cstring>
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -14,9 +17,6 @@
 #include <mutex>
 #include "../utils/protocol_consts.h"
 #include <sys/select.h>
-
-#ifndef protocol_server
-#define protocol_server
 
 const uint16_t initial_channel_number = 0;
 

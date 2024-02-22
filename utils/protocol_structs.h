@@ -1,9 +1,10 @@
+#ifndef STRUCTS_H
+#define STRUCTS_H
+
 #include <deque>
 #include <iostream>
 #include <mutex>
 
-#ifndef structs
-#define structs
 struct channel
 {
     int32_t socket;
