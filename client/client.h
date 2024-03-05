@@ -96,13 +96,13 @@ int connect_to_server(const char *server_ip, uint16_t server_port)
     inet_pton(AF_INET, server_ip, &(serv_addr.sin_addr));
     serv_addr.sin_port = htons(server_port);
 
-    char *message = new char[10];
-    sprintf(message, "%d", ntohs(client_addr.sin_port));
+    char message[2];
+    message[0] = '0';
+    message[1] = '\0';
 
     ssize_t bytes_sent = sendto(client_sockfd, message, strlen(message), 0,
                                 (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 
-    delete message;
     printf("%d\n", bytes_sent);
     if (bytes_sent <= 0)
     {
@@ -122,16 +122,15 @@ int connect_to_server(const char *server_ip, uint16_t server_port)
     return 0;
 }
 
-int receive_from_server(char *buf, const size_t *len)
+int receive_from_server(char *buf, size_t len)
 {
-    int n = recvfrom(client_sockfd, buf, 100, 0, NULL, NULL);
+    int n = recvfrom(client_sockfd, buf, len, 0, NULL, NULL);
     return n;
 }
 
 void send_to_server(const char *buf, size_t len)
 {
     socklen_t addr_len = sizeof(struct sockaddr_in);
-    cout << buf << "\n";
     int n = sendto(client_sockfd, buf, len, 0, (struct sockaddr *)&serv_addr, addr_len);
 }
 
