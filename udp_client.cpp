@@ -24,12 +24,13 @@ std::string gen_random(const int len)
 
 int main()
 {
+    client cl = client();
     srand((unsigned)time(NULL) * getpid());
-    init_client(4005);
-
-    reliable_connect_to_server("172.7.0.1", 4001);
+    cl.init_client(4000);
+    // connect_to_server("172.7.0.1", 4001);
+    cl.reliable_connect_to_server("172.7.0.1", 4001);
     // char *message = new char[11];
-    // for (int i = 0; i < 10; i++)
+    // for (int i = 0; i < 2; i++)
     // {
     //     char *buf = new char[501];
     //     size_t len;
