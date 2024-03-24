@@ -14,8 +14,28 @@ services:
           - NET_RAW
           - SYS_ADMIN
         networks:
+            net2:
+              ipv4_address: 193.168.0.2
+        command: bash -c "./scripts/server.sh && sleep infinity"
+    router:
+        build:
+            context: .
+            dockerfile: ./Dockerfile
+        privileged: true
+        volumes:
+            - .:/protocol
+        tty: true
+        cap_add:
+          - NET_ADMIN
+          - NET_RAW
+          - SYS_ADMIN
+        networks:
             net1:
-              ipv4_address: 172.7.0.1
+                ipv4_address: 172.10.0.10
+            net2:
+                ipv4_address: 193.168.0.10
+        command: bash -c "./scripts/router.sh && sleep infinity"
+
     client1:
         build:
             context: .
@@ -29,7 +49,8 @@ services:
           - SYS_ADMIN
         networks:
             net1:
-              ipv4_address: 172.7.0.2
+              ipv4_address: 172.10.0.2
+        command: bash -c "./scripts/client.sh && sleep infinity"
     client2:
         build:
             context: .
@@ -43,7 +64,9 @@ services:
           - SYS_ADMIN
         networks:
             net1:
-              ipv4_address: 172.7.0.3
+              ipv4_address: 172.10.0.3
+        command: bash -c "./scripts/client.sh && sleep infinity"
+
     client3:
         build:
             context: .
@@ -57,12 +80,18 @@ services:
           - SYS_ADMIN
         networks:
             net1:
-              ipv4_address: 172.7.0.4
+              ipv4_address: 172.10.0.4
+        command: bash -c "./scripts/client.sh && sleep infinity"
 networks:
     net1:
         ipam:
             driver: default
             config:
-                - subnet: 172.7.0.0/16
-                  gateway: 172.7.1.1
-
+                - subnet: 172.10.0.0/24
+                  gateway: 172.10.0.1
+    net2:
+        ipam:
+            driver: default
+            config:
+                - subnet: 193.168.0.0/24
+                  gateway: 193.168.0.1

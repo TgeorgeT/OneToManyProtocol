@@ -10,8 +10,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
                                          git \
                                          net-tools \
                                          arp-scan \
-                                         python3.8 \
-                                         python3-pip \
                                          tcpdump \
                                          ethtool \
                                          nmap \
@@ -22,7 +20,19 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
                                          iptables \
                                          iproute2 \
                                          telnet \
-                                         libnetfilter-queue-dev
+                                         libnetfilter-queue-dev \
+                                         python3 \
+                                         python3-pip \
+                                         python3-dev \
+                                         build-essential
+                                    
+RUN pip3 install NetfilterQueue numpy
+WORKDIR /protocol
+
+COPY . .
+
+RUN chmod +x ./scripts/router.sh
+RUN chmod +x ./scripts/client.sh
 
 
 RUN apt-get install -y g++ make
