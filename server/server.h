@@ -1,6 +1,7 @@
 #ifndef PROTOCOL_SERVER_H
 #define PROTOCOL_SERVER_H
 
+#include <atomic>
 #include <cstring>
 #include <sys/socket.h>
 #include <stdlib.h>
@@ -9,7 +10,7 @@
 #include <iostream>
 #include <errno.h>
 #include <thread>
-#include "../utils/channel.h"
+#include "../channel/channel.h"
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -31,12 +32,13 @@ using std::vector;
 // TO DO: ADD LOCK ON CREATING NEW CHANNEL
 // TO DO: ADD LOCK ON FD_SET
 // TO DO: DEAL WITH STD::MUTEX and copy constructor
+// VALGRIND
 
 class Server
 {
     // TO DO: make private
 public:
-    uint16_t channel_count;
+    std::atomic<uint16_t> channel_count;
     int32_t server_sockfd;
     thread listen_thread, receive_thread;
     unordered_map<uint32_t, channel *> channels;
@@ -58,6 +60,8 @@ public:
 
     void create_new_unreliable_channel(int32_t client_socket, sockaddr_in cli_addr);
 
+    void create_new_reliable_channel(int32_t client_socket, sockaddr_in cli_addr);
+
     void handle_new_connection(struct sockaddr_in client_addr);
 
     void handle_new_reliable_connection(struct sockaddr_in client_addr);
@@ -75,7 +79,7 @@ public:
 
     void send_to_all(const char *buf, size_t length);
 
-    void send_to_channel(const char *buf, size_t length, uint32_t channel_number);
+    void send_to_channel(uint32_t channel_number, const char *buf, size_t length);
 
     std::string receive_from_channel(uint32_t channel_number);
 

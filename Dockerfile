@@ -24,7 +24,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
                                          python3 \
                                          python3-pip \
                                          python3-dev \
-                                         build-essential
+                                         build-essential \
+					 valgrind
                                     
 RUN pip3 install NetfilterQueue numpy
 WORKDIR /protocol

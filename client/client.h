@@ -2,21 +2,21 @@
 #define CLIENT_H
 
 #include "rpc/xdr.h"
+#include "../channel/channel.h"
 #include "../utils/protocol_consts.h"
 
 class client
 {
-private:
+public:
     struct sockaddr_in serv_addr;
     struct sockaddr_in client_addr;
 
-    char recv_buffer[MAX_TRANSMITTED_LEN];
-    char send_buffer[MAX_TRANSMITTED_LEN];
-
-    XDR xdr_recv, xdr_send;
-
     int32_t server_sockfd;
     int32_t client_sockfd;
+
+    reliable_channel *channel;
+
+    void create_reliable_channel(int sockfd, struct sockaddr_in addr);
 
 public:
     void init_client(uint16_t local_port);

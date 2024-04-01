@@ -19,44 +19,47 @@ void Server::receiver_function(const char *message, sockaddr_in sender_addr)
     }
 }
 
+// TO DO: FIX LOCK
 std::string Server::receive_from_channel(uint32_t channel_number)
 {
-    if (channels.find(channel_number) == channels.end())
-    {
-        throw std::runtime_error("channel_not_exist");
-    }
-    channel *receive_channel = channels[channel_number];
-    std::string receive_buf;
-    while (1)
-    {
-        if (receive_channel->receive_que.empty())
-        {
-            continue;
-        }
-        receive_buf = std::move(receive_channel->receive_que.front());
-        receive_channel->receive_que.pop_front();
+    std::unique_lock<std::mutex> lock(universal_lock);
 
-        cout << receive_buf << "\n";
-        if (receive_buf == "unreliable_end")
-        {
-            try
-            {
-                unique_lock<mutex> lock(universal_lock);
-                close(receive_channel->socket);
-                printf("am dat erase\n ");
-                channels.erase(channel_number);
-                cout << "channel_number = " << channels.size() << "\n";
-                client_sockets.erase(receive_channel->socket);
-                return "connection_closed\n";
-            }
-            catch (...)
-            {
-                return "unreliable_close_error\n";
-            }
-        }
+    // if (channels.find(channel_number) == channels.end())
+    // {
+    //     throw std::runtime_error("channel_not_exist");
+    // }
+    // channel *receive_channel = channels[channel_number];
+    // std::string receive_buf;
+    // while (1)
+    // {
+    //     if (receive_channel->receive_que.empty())
+    //     {
+    //         continue;
+    //     }
+    //     receive_buf = std::move(receive_channel->receive_que.front());
+    //     receive_channel->receive_que.pop_front();
 
-        return receive_buf;
-    }
+    //     cout << receive_buf << "\n";
+    //     if (receive_buf == "unreliable_end")
+    //     {
+    //         try
+    //         {
+    //             unique_lock<mutex> lock(universal_lock);
+    //             close(receive_channel->socket);
+    //             printf("am dat erase\n ");
+    //             channels.erase(channel_number);
+    //             cout << "channel_number = " << channels.size() << "\n";
+    //             client_sockets.erase(receive_channel->socket);
+    //             return "connection_closed\n";
+    //         }
+    //         catch (...)
+    //         {
+    //             return "unreliable_close_error\n";
+    //         }
+    //     }
+
+    //     return receive_buf;
+    // }
 }
 
 void Server::handle_receive_packet()
@@ -73,7 +76,6 @@ void Server::handle_receive_packet()
     for (;;)
     {
         {
-
             unique_lock<mutex> lock(universal_lock);
             memcpy(&read_set, &(this->clients_sockets_set), sizeof(this->clients_sockets_set));
 
@@ -87,9 +89,13 @@ void Server::handle_receive_packet()
                         socklen = sizeof(sockaddr_in);
                         received_bytes = recvfrom(*it, buf, MAX_TRANSMITTED_LEN, 0,
                                                   (struct sockaddr *)&sender, &socklen);
+                        if (received_bytes == -1)
+                        {
+                            continue;
+                        }
                         buf[received_bytes] = '\0';
 
-                        char *message = new char[strlen(buf)];
+                        char *message = new char[strlen(buf) + 1];
                         strcpy(message, buf);
 
                         // TO_DO ask how to deal with message
@@ -108,6 +114,7 @@ Server::Server() : channel_count(initial_channel_number)
 {
     this->senders = new thread_pool(THREAD_POOL_SIZE);
     this->receivers = new thread_pool(THREAD_POOL_SIZE);
+    FD_ZERO(&(this->clients_sockets_set));
 };
 
 void Server::send_to_all(const char *buf, size_t length)
@@ -126,47 +133,51 @@ void Server::send_to_all(const char *buf, size_t length)
     }
 }
 
-void Server::send_to_channel(const char *buf, size_t length, uint32_t channel_number)
+void Server::send_to_channel(uint32_t channel_number, const char *buf, size_t length)
 {
     {
         unique_lock<mutex> lock(universal_lock);
-
         auto it = channels.find(channel_number);
-
         if (it == channels.end())
         {
             throw std::runtime_error("channel_not_exist");
         }
-        // std::function<void()> task = [this, it, buf, length]
-        // { sendto(it->second->socket, buf, length, 0, (const sockaddr *)&((it->second)->cli_addr), sizeof((it->second)->cli_addr)); };
-        // senders->enqueue(task);
-        // senders->enqueue([this, it, buf, length]
-        //  { sendto(it->second->socket, buf, length, 0, (const sockaddr *)&((it->second)->cli_addr), sizeof((it->second)->cli_addr)); });
+        if (!it->second->get_type())
+        {
+            std::function<void()> task = [this, it, buf, length]
+            { sendto(it->second->socket, buf, length, 0, (const sockaddr *)&((it->second)->dest_addr), sizeof((it->second)->dest_addr)); };
+            senders->enqueue(task);
+            return;
+        }
+        reliable_channel *channel = static_cast<reliable_channel *>(it->second);
+        {
+            unique_lock<mutex> lock(channel->send_que_lock);
+            channel->send_que.push_back(buf);
+        }
     }
 }
 
+// TO DO: ADD LOCKS
 void Server::create_new_unreliable_channel(int32_t client_socket, sockaddr_in cli_addr)
 {
-
+    unique_lock<mutex> lock(universal_lock);
     channel *new_channel = new unreliable_channel(
         client_socket,
         ++channel_count,
         cli_addr);
     ip_to_channel[cli_addr.sin_addr.s_addr] = new_channel->channel_number;
-    {
-        FD_SET(client_socket, &(this->clients_sockets_set));
-        client_sockets.insert(client_socket);
-    }
-
+    FD_SET(client_socket, &(this->clients_sockets_set));
+    client_sockets.insert(client_socket);
     channels[new_channel->channel_number] = new_channel;
 }
+
 void Server::listen_server()
 {
     int n;
     struct sockaddr_in cli_addr;
-    char *buffer = new char[10];
+    char *buffer = new char[40];
+    memset(buffer, 0, 10);
     socklen_t len;
-    printf("listening\n");
     for (;;)
     {
         // cout << "listening\n";
@@ -175,19 +186,19 @@ void Server::listen_server()
         n = recvfrom(server_sockfd, buffer, 10, 0, (struct sockaddr *)&cli_addr,
                      &len);
 
-        cout << "new connection = \n"
-             << n << "\n";
-        buffer[n] = '\0';
         if (n > 0)
         {
+            buffer[n] = '\0';
             if (buffer[0] == '0')
             {
-                printf("new connection\n");
+                printf("new non reliable connection\n");
                 this->handle_new_connection(cli_addr);
             }
             else
             {
-                std::thread(&Server::handle_new_reliable_connection, this, cli_addr).detach();
+
+                this->handle_new_reliable_connection(cli_addr);
+                printf("new reliable connection\n");
             }
         }
     }
@@ -211,8 +222,8 @@ void Server::init_server(uint16_t port)
 
     bind(this->server_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 
-    this->receive_thread = thread(&Server::handle_receive_packet, this);
-    this->receive_thread.detach();
+    // this->receive_thread = thread(&Server::handle_receive_packet, this);
+    // this->receive_thread.detach();
 }
 
 void Server::listen()
@@ -255,5 +266,3 @@ void Server::handle_new_connection(struct sockaddr_in cli_addr)
     create_new_unreliable_channel(sockfd, cli_addr);
     delete[] buf;
 }
-
-#

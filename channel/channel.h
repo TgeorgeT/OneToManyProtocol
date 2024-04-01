@@ -8,18 +8,22 @@
 #include "../utils/protocol_consts.h"
 #include <queue>
 #include <thread>
+#include "../utils/protocol_structs.h"
+#include <chrono>
+#include <condition_variable>
+#include <atomic>
 
 class channel
 {
 public:
     int32_t socket;
     int32_t channel_number;
-    struct sockaddr_in cli_addr;
+    struct sockaddr_in dest_addr;
     std::deque<std::string> receive_que;
     std::mutex receive_que_lock;
 
-    channel(int32_t socket, int32_t channel_number, const sockaddr_in &cli_addr)
-        : socket(socket), channel_number(channel_number), cli_addr(cli_addr) {}
+    channel(int32_t socket, int32_t channel_number, const sockaddr_in &dest_addr)
+        : socket(socket), channel_number(channel_number), dest_addr(dest_addr) {}
 
     virtual bool get_type() const = 0;
 
@@ -46,34 +50,40 @@ class reliable_channel : public channel
 
 private:
     void send_function();
+    void receive_function();
 
 public:
+    void send(std::string);
+    std::string receive();
+    void serialize_and_send(packet_data *p);
     std::mutex send_que_lock;
+    std::mutex acks_to_send_lock;
+    std::mutex window_lock;
+
+    std::condition_variable receive_que_cv;
 
     std::thread *send_thread;
     std::thread *receive_thread;
 
     std::deque<std::string> send_que;
+    std::deque<std::uint32_t> received_ack;
+    std::deque<std::uint32_t> acks_to_send;
+    std::deque<std::pair<std::string, int>> window;
+    std::deque<std::string> packekts_to_send;
+
+    std::chrono::system_clock::time_point last_ack_time;
 
     char *send_buffer;
     char *receive_buffer;
     XDR send_xdr;
     XDR receive_xdr;
 
-    uint32_t last_ack;
-    uint32_t last_seq;
+    std::atomic<int> last_received_seq;
+    int last_seq;
+    uint32_t max_window_size;
 
-    reliable_channel(int32_t socket, int32_t channel_number, const sockaddr_in &cli_addr)
-        : channel(socket, channel_number, cli_addr)
-    {
-        send_buffer = new char[MAX_TRANSMITTED_LEN];
-        receive_buffer = new char[MAX_TRANSMITTED_LEN];
-        xdrmem_create(&send_xdr, send_buffer, MAX_TRANSMITTED_LEN, XDR_ENCODE);
-        xdrmem_create(&receive_xdr, receive_buffer, MAX_TRANSMITTED_LEN, XDR_DECODE);
-
-        send_thread = new std::thread(&reliable_channel::send_function, this);
-        // receive_thread = new std::thread(&reliable_channel::receive_function, this);
-    }
+    reliable_channel(int32_t socket, int32_t channel_number, const sockaddr_in &dest_addr);
+    void start_reliable_communication();
 
     ~reliable_channel() override
     {

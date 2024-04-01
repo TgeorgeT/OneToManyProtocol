@@ -5,22 +5,25 @@ using std::cout;
 
 int main()
 {
+    cout << "server started\n";
     Server server;
     server.init_server(4001);
     server.listen();
-    for (;;)
+    while (server.channel_count == 0)
     {
-        // try
-        // {
-        //     sleep(2);
-        //     cout << "channel 1 = " << server.receive_from_channel(1) << "\n";
-        //     // cout << "channel 2 = " << server.receive_from_channel(2) << "\n";
-        //     // cout << "channel 3 = " << server.receive_from_channel(3) << "\n";
-        // }
-        // catch (...)
-        // {
-
-        //     //cout << "channel not exist\n";
-        // }
+    };
+    reliable_channel *channel;
+    {
+        std::unique_lock<std::mutex> lock(server.universal_lock);
+        channel = static_cast<reliable_channel *>(server.channels[1]);
     }
+
+    auto time1 = std::chrono::system_clock::now();
+    for (int i = 0; i < 8000; i++)
+    {
+        cout << i << "\n";
+        std::string message = channel->receive();
+    }
+    std::chrono::duration<double> diff = std::chrono::system_clock::now() - time1;
+    cout << "Time: " << diff.count() << "\n";
 }
