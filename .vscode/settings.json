@@ -78,7 +78,10 @@
         "unordered_set": "cpp",
         "variant": "cpp",
         "__nullptr": "cpp",
-        "__string": "cpp"
+        "__string": "cpp",
+        "fstream": "cpp",
+        "iomanip": "cpp",
+        "stack": "cpp"
     },
     "editor.defaultFormatter": "ms-vscode.cpptools"
 }

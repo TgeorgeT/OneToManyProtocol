@@ -4,8 +4,8 @@ CXXFLAGS=-Wall -g
 SERVER_TARGET=udp_server
 CLIENT_TARGET=udp_client
 
-SERVER_SOURCES=udp_server.cpp server/server.cpp server/reliable_connection.cpp thread_pool/thread_pool.cpp channel/reliable_channel.cpp utils/xdr_serialization.cpp
-CLIENT_SOURCES=utils/xdr_serialization.cpp client/client.cpp udp_client.cpp client/reliable_connection.cpp channel/reliable_channel.cpp
+SERVER_SOURCES=udp_server.cpp server/server.cpp server/reliable_connection.cpp thread_pool/thread_pool.cpp channel/reliable_channel.cpp utils/xdr_serialization.cpp channel/unreliable_channel.cpp
+CLIENT_SOURCES=utils/xdr_serialization.cpp client/client.cpp udp_client.cpp client/reliable_connection.cpp channel/reliable_channel.cpp channel/unreliable_channel.cpp
 
 SERVER_OBJECTS=$(SERVER_SOURCES:.cpp=.o)
 CLIENT_OBJECTS=$(CLIENT_SOURCES:.cpp=.o)

@@ -55,32 +55,21 @@ public:
     // std::mutex modify_channels_send_lockn;
     // std::mutex modify_channels_receive_lock1;
     // std::mutex modify_channels_receive_lockn;
-
     void listen_server();
-
     void create_new_unreliable_channel(int32_t client_socket, sockaddr_in cli_addr);
-
     void create_new_reliable_channel(int32_t client_socket, sockaddr_in cli_addr);
-
     void handle_new_connection(struct sockaddr_in client_addr);
-
     void handle_new_reliable_connection(struct sockaddr_in client_addr);
-
     void handle_receive_packet();
-
     void receiver_function(const char *buf, sockaddr_in sender_addr);
 
 public:
     Server();
 
     void init_server(uint16_t port);
-
     void listen();
-
     void send_to_all(const char *buf, size_t length);
-
     void send_to_channel(uint32_t channel_number, const char *buf, size_t length);
-
     std::string receive_from_channel(uint32_t channel_number);
 
     unordered_map<uint32_t, channel *> get_channels()

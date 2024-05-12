@@ -7,8 +7,10 @@ os.system("iptables -I FORWARD -j NFQUEUE --queue-num 5")
 
 def drop(packet):
     if np.random.choice([True, False], p=[0.01, 0.99]):
+        print("dropping")
         packet.drop()
     else:
+        print("accepting")
         packet.accept()
 
 nfqueue = NetfilterQueue()

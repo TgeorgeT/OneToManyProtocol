@@ -33,7 +33,7 @@ void Server::handle_new_reliable_connection(struct sockaddr_in cli_addr)
 
     const char *result = inet_ntop(AF_INET, &cli_addr.sin_addr, ipStr, sizeof(ipStr));
 
-    timeval timeout = {5, 0};
+    timeval timeout = {10, 0};
     if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
     {
         printf("setsockopt failed: %s\n", strerror(errno));
@@ -96,7 +96,7 @@ void Server::handle_new_reliable_connection(struct sockaddr_in cli_addr)
                     {
                         printf("Handshake successful\n");
 
-                        timeout = {0, 0};
+                        timeout = {SOCK_TIMEOUT, 0};
 
                         if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
                         {

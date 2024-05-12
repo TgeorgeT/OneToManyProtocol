@@ -20,12 +20,18 @@ public:
     int32_t channel_number;
     struct sockaddr_in dest_addr;
     std::deque<std::string> receive_que;
+    std::condition_variable receive_que_cv;
     std::mutex receive_que_lock;
+    std::atomic<bool> active;
 
     channel(int32_t socket, int32_t channel_number, const sockaddr_in &dest_addr)
-        : socket(socket), channel_number(channel_number), dest_addr(dest_addr) {}
+        : socket(socket), channel_number(channel_number), dest_addr(dest_addr), active(true)
+    {
+    }
 
     virtual bool get_type() const = 0;
+
+    virtual std::string receive() = 0;
 
     virtual ~channel() = default;
 
@@ -43,6 +49,8 @@ public:
     {
         return false;
     }
+    std::string receive() override;
+    ~unreliable_channel() override = default;
 };
 
 class reliable_channel : public channel
@@ -51,16 +59,15 @@ class reliable_channel : public channel
 private:
     void send_function();
     void receive_function();
+    void create_packet(std::string data, int seq, int ack, packet_data *p, char *payload);
 
 public:
     void send(std::string);
-    std::string receive();
+    std::string receive() override;
     void serialize_and_send(packet_data *p);
     std::mutex send_que_lock;
     std::mutex acks_to_send_lock;
     std::mutex window_lock;
-
-    std::condition_variable receive_que_cv;
 
     std::thread *send_thread;
     std::thread *receive_thread;
@@ -73,17 +80,20 @@ public:
 
     std::chrono::system_clock::time_point last_ack_time;
 
+    std::atomic<bool> sent_fin;
+
     char *send_buffer;
     char *receive_buffer;
     XDR send_xdr;
     XDR receive_xdr;
 
     std::atomic<int> last_received_seq;
-    int last_seq;
+    int last_seq, fin_ack_no;
     uint32_t max_window_size;
 
     reliable_channel(int32_t socket, int32_t channel_number, const sockaddr_in &dest_addr);
     void start_reliable_communication();
+    void close_connection();
 
     ~reliable_channel() override
     {
