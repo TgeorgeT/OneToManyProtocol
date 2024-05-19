@@ -6,7 +6,7 @@ services:
             dockerfile: ./Dockerfile
         privileged: true
         volumes:
-            - .:/protocol
+            - .:/protocol:cached
         tty: true
         cap_add:
           - NET_ADMIN
@@ -22,7 +22,7 @@ services:
             dockerfile: ./Dockerfile
         privileged: true
         volumes:
-            - .:/protocol
+            - .:/protocol:cached
         tty: true
         cap_add:
           - NET_ADMIN
@@ -40,7 +40,7 @@ services:
             context: .
             dockerfile: ./Dockerfile
         volumes:
-            - .:/protocol
+            - .:/protocol:cached
         tty: true
         cap_add:
           - NET_ADMIN
@@ -81,6 +81,36 @@ services:
             net1:
               ipv4_address: 172.10.0.4
         command: bash -c "./scripts/client.sh && sleep infinity"
+    client4:
+            build:
+                context: .
+                dockerfile: ./Dockerfile
+            volumes:
+                - .:/protocol
+            tty: true
+            cap_add:
+            - NET_ADMIN
+            - NET_RAW
+            - SYS_ADMIN
+            networks:
+                net1:
+                    ipv4_address: 172.10.0.5
+            command: bash -c "./scripts/client.sh && sleep infinity"
+    client5:
+            build:
+                context: .
+                dockerfile: ./Dockerfile
+            volumes:
+                - .:/protocol
+            tty: true
+            cap_add:
+            - NET_ADMIN
+            - NET_RAW
+            - SYS_ADMIN
+            networks:
+                net1:
+                    ipv4_address: 172.10.0.6
+            command: bash -c "./scripts/client.sh && sleep infinity"
 networks:
     net1:
         ipam:

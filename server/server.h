@@ -43,12 +43,16 @@ public:
     thread listen_thread, receive_thread;
     unordered_map<uint32_t, channel *> channels;
     unordered_map<uint32_t, uint32_t> ip_to_channel;
+    unordered_map<std::string, uint32_t> ipport_to_channel;
     thread_pool *senders, *receivers;
     unordered_set<int32_t> client_sockets;
     fd_set clients_sockets_set;
     timeval select_timeval;
 
+    std::unordered_set<std::string> pending_connections;
+
     std::mutex universal_lock;
+    std::condition_variable channels_cv;
 
     // std::mutex modify_sock_set;
     // std::mutex modify_channels_send_lock1;
@@ -59,7 +63,7 @@ public:
     void create_new_unreliable_channel(int32_t client_socket, sockaddr_in cli_addr);
     void create_new_reliable_channel(int32_t client_socket, sockaddr_in cli_addr);
     void handle_new_connection(struct sockaddr_in client_addr);
-    void handle_new_reliable_connection(struct sockaddr_in client_addr);
+    void handle_new_reliable_connection(struct sockaddr_in cli_addr);
     void handle_receive_packet();
     void receiver_function(const char *buf, sockaddr_in sender_addr);
 
@@ -70,7 +74,12 @@ public:
     void listen();
     void send_to_all(const char *buf, size_t length);
     void send_to_channel(uint32_t channel_number, const char *buf, size_t length);
+    void send_to_channel_by_ipport(std::string ipport, std::string messages);
     std::string receive_from_channel(uint32_t channel_number);
+    std::string receive_from_channel_by_ipport(std::string ipport);
+    void wait_for_ipport(std::string ipport);
+    void wait_for_ipport_list(std::vector<std::string> ipport_list);
+    void close_by_ippport(std::string ipport);
 
     unordered_map<uint32_t, channel *> get_channels()
     {

@@ -7,59 +7,62 @@ using std::unordered_map;
 using std::unordered_set;
 using std::vector;
 
-void Server::receiver_function(const char *message, sockaddr_in sender_addr)
+void Server::close_by_ippport(std::string ipport)
 {
-    channel *sender_channel;
+    unique_lock<mutex> lock(universal_lock);
+    if (ipport_to_channel.find(ipport) == ipport_to_channel.end())
     {
-        unique_lock<mutex> lock(universal_lock);
-        sender_channel = channels[ip_to_channel[sender_addr.sin_addr.s_addr]];
-        {
-            sender_channel->receive_que.push_back(message);
-        }
+        throw std::runtime_error("channel_not_exist");
     }
+    int channel_number = ipport_to_channel[ipport];
+    static_cast<reliable_channel *>(channels[channel_number])->close();
 }
 
-// TO DO: FIX LOCK
-std::string Server::receive_from_channel(uint32_t channel_number)
+void Server::wait_for_ipport_list(std::vector<std::string> ipport_list)
+{
+    for (std::string s : ipport_list)
+        this->wait_for_ipport(s);
+}
+
+void Server::wait_for_ipport(std::string ipport)
 {
     std::unique_lock<std::mutex> lock(universal_lock);
+    channels_cv.wait(lock, [this, &ipport]
+                     { return this->ipport_to_channel.find(ipport) != this->ipport_to_channel.end(); });
+}
 
-    // if (channels.find(channel_number) == channels.end())
-    // {
-    //     throw std::runtime_error("channel_not_exist");
-    // }
-    // channel *receive_channel = channels[channel_number];
-    // std::string receive_buf;
-    // while (1)
-    // {
-    //     if (receive_channel->receive_que.empty())
-    //     {
-    //         continue;
-    //     }
-    //     receive_buf = std::move(receive_channel->receive_que.front());
-    //     receive_channel->receive_que.pop_front();
+void Server::receiver_function(const char *message, sockaddr_in sender_addr)
+{
+    if (ip_to_channel.find(sender_addr.sin_addr.s_addr) == ip_to_channel.end())
+        throw std::runtime_error("Receive on non existing channel");
 
-    //     cout << receive_buf << "\n";
-    //     if (receive_buf == "unreliable_end")
-    //     {
-    //         try
-    //         {
-    //             unique_lock<mutex> lock(universal_lock);
-    //             close(receive_channel->socket);
-    //             printf("am dat erase\n ");
-    //             channels.erase(channel_number);
-    //             cout << "channel_number = " << channels.size() << "\n";
-    //             client_sockets.erase(receive_channel->socket);
-    //             return "connection_closed\n";
-    //         }
-    //         catch (...)
-    //         {
-    //             return "unreliable_close_error\n";
-    //         }
-    //     }
+    channel *channel = channels[ip_to_channel[sender_addr.sin_addr.s_addr]];
+    {
+        unique_lock<mutex> lock(channel->receive_que_lock);
+        channel->receive_que.push_back(std::string(message));
+    }
+    delete message;
+}
 
-    //     return receive_buf;
-    // }
+std::string Server::receive_from_channel(uint32_t channel_number)
+{
+    unique_lock<mutex> lock(universal_lock);
+    if (channels.find(channel_number) == channels.end())
+        throw std::runtime_error("Channel not found");
+
+    return channels[channel_number]->receive();
+}
+
+std::string Server::receive_from_channel_by_ipport(std::string ipport)
+{
+    unique_lock<mutex> lock(universal_lock);
+    if (ipport_to_channel.find(ipport) == ipport_to_channel.end())
+    {
+        throw std::runtime_error("channel_not_exist");
+    }
+    int channel_number = ipport_to_channel[ipport];
+
+    return channels[channel_number]->receive();
 }
 
 void Server::handle_receive_packet()
@@ -97,7 +100,6 @@ void Server::handle_receive_packet()
 
                         char *message = new char[strlen(buf) + 1];
                         strcpy(message, buf);
-
                         // TO_DO ask how to deal with message
 
                         std::function<void()> task = [this, message, received_bytes, sender, it]
@@ -157,6 +159,38 @@ void Server::send_to_channel(uint32_t channel_number, const char *buf, size_t le
     }
 }
 
+void Server::send_to_channel_by_ipport(std::string ipport, std::string message)
+{
+    {
+        unique_lock<mutex> lock(universal_lock);
+        if (ipport_to_channel.find(ipport) == ipport_to_channel.end())
+        {
+            throw std::runtime_error("channel_not_exist");
+        }
+        int channel_number = ipport_to_channel[ipport];
+
+        auto it = channels.find(channel_number);
+
+        // std::cout << channel_number << "\n";
+        if (it == channels.end())
+        {
+            throw std::runtime_error("channel_not_exist");
+        }
+        if (!it->second->get_type())
+        {
+            std::function<void()> task = [this, it, message]
+            { sendto(it->second->socket, message.c_str(), message.size(), 0, (const sockaddr *)&((it->second)->dest_addr), sizeof((it->second)->dest_addr)); };
+            senders->enqueue(task);
+            return;
+        }
+        reliable_channel *channel = static_cast<reliable_channel *>(it->second);
+        {
+            unique_lock<mutex> lock(channel->send_que_lock);
+            channel->send_que.push_back(message);
+        }
+    }
+}
+
 // TO DO: ADD LOCKS
 void Server::create_new_unreliable_channel(int32_t client_socket, sockaddr_in cli_addr)
 {
@@ -177,6 +211,7 @@ void Server::listen_server()
     struct sockaddr_in cli_addr;
     char *buffer = new char[40];
     memset(buffer, 0, 10);
+    unordered_set<std::string> pending_connections;
     socklen_t len;
     for (;;)
     {
@@ -185,20 +220,18 @@ void Server::listen_server()
         len = sizeof(struct sockaddr_in);
         n = recvfrom(server_sockfd, buffer, 10, 0, (struct sockaddr *)&cli_addr,
                      &len);
-
         if (n > 0)
         {
             buffer[n] = '\0';
             if (buffer[0] == '0')
             {
-                printf("new non reliable connection\n");
+                // printf("new non reliable connection\n");
                 this->handle_new_connection(cli_addr);
             }
             else
             {
-
+                // cout << "got new reliable\n";
                 this->handle_new_reliable_connection(cli_addr);
-                printf("new reliable connection\n");
             }
         }
     }
@@ -211,9 +244,7 @@ void Server::init_server(uint16_t port)
                             TIMEVAL_MICROSECONDS};
 
     this->server_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-
     struct sockaddr_in serv_addr;
-
     bzero(&serv_addr, sizeof(serv_addr));
 
     serv_addr.sin_family = AF_INET;
@@ -222,8 +253,8 @@ void Server::init_server(uint16_t port)
 
     bind(this->server_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 
-    // this->receive_thread = thread(&Server::handle_receive_packet, this);
-    // this->receive_thread.detach();
+    this->receive_thread = thread(&Server::handle_receive_packet, this);
+    this->receive_thread.detach();
 }
 
 void Server::listen()
@@ -236,9 +267,7 @@ void Server::handle_new_connection(struct sockaddr_in cli_addr)
 {
 
     int32_t sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-
     struct sockaddr_in *new_client = new sockaddr_in;
-
     bzero(new_client, sizeof(sockaddr_in));
 
     new_client->sin_family = AF_INET;

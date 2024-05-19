@@ -7,6 +7,7 @@ const unsigned int MAX_TRANSMITTED_LEN = 1060;
 const unsigned int PACKET_SIZE = 20;
 const unsigned int SOCK_TIMEOUT = 1800;
 const unsigned int FIN_FLAG = 1;
-const float WINDOW_RESEND_TIME = 0.05;
+const float WINDOW_RESEND_TIME = 0.007;
+const float MAX_CONNECTION_RETRIES = 10;
 
 #endif

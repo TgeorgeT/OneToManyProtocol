@@ -15,16 +15,19 @@ public:
     int32_t client_sockfd;
 
     reliable_channel *channel;
+    char buf[MAX_TRANSMITTED_LEN];
+    int len;
 
-    void create_reliable_channel(int sockfd, struct sockaddr_in addr);
+    void
+    create_reliable_channel(int sockfd, struct sockaddr_in addr);
 
 public:
     void init_client(uint16_t local_port);
     void reliable_connect_to_server(const char *server_ip, uint16_t server_port);
     int connect_to_server(const char *server_ip, uint16_t server_port);
-    int receive_from_server(char *buf, size_t len);
-    void send_to_server(const char *buf, size_t len);
-    void unreliable_announce_end();
+    std::string receive();
+    void send(std::string s);
+    void close();
 };
 
 #endif
