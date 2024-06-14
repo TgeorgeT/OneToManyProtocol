@@ -2,25 +2,30 @@
 #include <iostream>
 #include <arpa/inet.h>
 
-void client::reliable_connect_to_server(const char *server_ip, uint16_t server_port)
+void Client::reliable_connect_to_one(const char *server_ip, uint16_t server_port)
 {
     serv_addr.sin_family = AF_INET;
     inet_pton(AF_INET, server_ip, &(serv_addr.sin_addr));
     serv_addr.sin_port = htons(server_port);
 
-    // printf("Creating reliable channel\n");
+    printf("Creating reliable channel\n");
     channel = new reliable_channel(
         server_sockfd,
         1, serv_addr);
+
+    printf("Creating reliable channel\n");
     channel->start_reliable_communication();
+
 
     channel->send("1");
     std::string port = channel->receive();
 
+    printf("Creating reliable channel\n");
+
     channel->dest_addr.sin_port = htons(stoi(port));
     channel->send("ok");
 
-    // std::cout << "am terminat\n";
+    std::cout << "am terminat\n";
 }
 
 // void client::reliable_connect_to_server(const char *server_ip, uint16_t server_port)
@@ -126,7 +131,7 @@ void client::reliable_connect_to_server(const char *server_ip, uint16_t server_p
 //     xdr_destroy(&xdr_send);
 //     create_reliable_channel(server_sockfd, serv_addr);
 // }
-void client::create_reliable_channel(int sockfd, struct sockaddr_in addr)
+void Client::create_reliable_channel(int sockfd, struct sockaddr_in addr)
 {
     printf("Creating reliable channel\n");
     channel = new reliable_channel(

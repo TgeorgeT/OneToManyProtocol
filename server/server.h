@@ -70,16 +70,22 @@ public:
 public:
     Server();
 
-    void init_server(uint16_t port);
+    void init(uint16_t port);
     void listen();
     void send_to_all(const char *buf, size_t length);
     void send_to_channel(uint32_t channel_number, const char *buf, size_t length);
+    void send_to_many_by_ipports(std::vector<std::string> ipports, std::vector<std::string> messages);
+    std::vector<std::string> receive_from_channels_by_ipports(std::vector<std::string> ipports);
     void send_to_channel_by_ipport(std::string ipport, std::string messages);
     std::string receive_from_channel(uint32_t channel_number);
     std::string receive_from_channel_by_ipport(std::string ipport);
     void wait_for_ipport(std::string ipport);
     void wait_for_ipport_list(std::vector<std::string> ipport_list);
     void close_by_ippport(std::string ipport);
+    void stop()
+    {
+        exit(0);
+    }
 
     unordered_map<uint32_t, channel *> get_channels()
     {

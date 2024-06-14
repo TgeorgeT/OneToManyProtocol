@@ -14,7 +14,7 @@
 
 // DEAL WITH RECVFROM TIMEOUT
 
-void client::init_client(uint16_t local_port)
+void Client::init(uint16_t local_port)
 {
     client_addr.sin_family = AF_INET;
     client_addr.sin_addr.s_addr = INADDR_ANY;
@@ -29,7 +29,7 @@ void client::init_client(uint16_t local_port)
     bind(server_sockfd, (struct sockaddr *)&client_addr, sizeof(client_addr));
 }
 
-int client::connect_to_server(const char *server_ip, uint16_t server_port)
+int Client::connect_to_server(const char *server_ip, uint16_t server_port)
 {
 
     serv_addr.sin_family = AF_INET;
@@ -62,7 +62,7 @@ int client::connect_to_server(const char *server_ip, uint16_t server_port)
     return 0;
 }
 
-std::string client::receive()
+std::string Client::receive()
 {
     if (channel)
     {
@@ -73,7 +73,7 @@ std::string client::receive()
     return std::string(buf);
 }
 
-void client::send(std::string s)
+void Client::send(std::string s)
 {
     if (channel)
     {
@@ -86,7 +86,7 @@ void client::send(std::string s)
     int n = sendto(server_sockfd, buf, len, 0, (struct sockaddr *)&serv_addr, addr_len);
 }
 
-void client::close()
+void Client::close()
 {
     if (channel)
     {

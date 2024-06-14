@@ -49,31 +49,24 @@ int compute(const std::string &str)
     return result;
 }
 
+class ManyEnpoint : public Client
+{
+};
+
 int main(int argc, char *argv[])
 {
-    if (argc != 2)
-    {
-        cout << "Usage: " << argv[0] << " <number_of_iterations>\n";
-        return 1;
-    }
+    ManyEnpoint many_endpoint = ManyEnpoint();
+    many_endpoint.init(4000);
+    many_endpoint.reliable_connect("193.168.0.2", 4001);
 
-    int num_iterations = std::stoi(argv[1]);
-    if (num_iterations <= 0)
-    {
-        cout << "The number of iterations must be a positive integer.\n";
-        return 1;
-    }
-
-    Client client = Client();
-    client.init(4000);
-    std::string s = gen_random(1000);
-    client.reliable_connect_to_one("193.168.0.2", 4001);
-
-    // for(int i=0;i<num_iterations;i++){
-    //     client.send(s);
-    // }
-
-    // cl.close();
+    std::string s = many_endpoint.receive();
+    cout << s << "\n";
+    cout << "sending " << std::to_string(compute(s)) << "\n";
+    many_endpoint.send(std::to_string(compute(s)));
+    many_endpoint.close();
 
     return 0;
 }
+
+
+

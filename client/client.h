@@ -5,7 +5,7 @@
 #include "../channel/channel.h"
 #include "../utils/protocol_consts.h"
 
-class client
+class Client
 {
 public:
     struct sockaddr_in serv_addr;
@@ -22,8 +22,8 @@ public:
     create_reliable_channel(int sockfd, struct sockaddr_in addr);
 
 public:
-    void init_client(uint16_t local_port);
-    void reliable_connect_to_server(const char *server_ip, uint16_t server_port);
+    void init(uint16_t local_port);
+    void reliable_connect_to_one(const char *server_ip, uint16_t server_port);
     int connect_to_server(const char *server_ip, uint16_t server_port);
     std::string receive();
     void send(std::string s);

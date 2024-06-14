@@ -49,15 +49,15 @@ void Server::handle_new_reliable_connection(struct sockaddr_in client_addr)
             ++channel_count,
             client_addr);
         new_channel->last_received_seq = 1;
-        cout << "created reliable channel object\n";
+        // cout << "created reliable channel object\n";
 
         new_channel->start_reliable_communication();
 
         new_channel->send(std::to_string(ntohs(sin.sin_port)));
 
-        cout << "sent string\n";
+        // cout << "sent string\n";
         std::string s = new_channel->receive();
-        cout << "received string\n";
+        // cout << "received string\n";
 
         // std::cout << s << "\n";
 

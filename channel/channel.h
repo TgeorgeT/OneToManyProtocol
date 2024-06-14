@@ -68,6 +68,9 @@ public:
     std::mutex send_que_lock;
     std::mutex acks_to_send_lock;
     std::mutex window_lock;
+    std::mutex close_lock;
+
+    std::condition_variable wait_for_close;
 
     std::thread *send_thread;
     std::thread *receive_thread;
@@ -80,7 +83,7 @@ public:
 
     std::chrono::system_clock::time_point last_ack_time;
 
-    std::atomic<bool> sent_fin;
+    std::atomic<bool> sent_fin, got_fin, closed_send_thread, closed_receive_thread;
 
     char *send_buffer;
     char *receive_buffer;
@@ -93,7 +96,7 @@ public:
 
     reliable_channel(int32_t socket, int32_t channel_number, const sockaddr_in &dest_addr);
     void start_reliable_communication();
-    void close_connection();
+    void close();
 
     ~reliable_channel() override
     {

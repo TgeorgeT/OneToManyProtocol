@@ -7,6 +7,24 @@ using std::unordered_map;
 using std::unordered_set;
 using std::vector;
 
+vector<std::string> Server::receive_from_channels_by_ipports(std::vector<std::string> ipports)
+{
+    std::vector<std::string> messages = {};
+    for (std::string ipport : ipports)
+    {
+        messages.push_back(receive_from_channel_by_ipport(ipport));
+    }
+    return messages;
+}
+
+void Server::send_to_many_by_ipports(std::vector<std::string> ipports, std::vector<std::string> messages)
+{
+    for (int i = 0; i < ipports.size(); ++i)
+    {
+        send_to_channel_by_ipport(ipports[i], messages[i]);
+    }
+}
+
 void Server::close_by_ippport(std::string ipport)
 {
     unique_lock<mutex> lock(universal_lock);
@@ -237,7 +255,7 @@ void Server::listen_server()
     }
 }
 
-void Server::init_server(uint16_t port)
+void Server::init(uint16_t port)
 {
     FD_ZERO(&(this->clients_sockets_set));
     this->select_timeval = {0,

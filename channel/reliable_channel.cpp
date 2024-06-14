@@ -79,9 +79,10 @@ void reliable_channel::send_function()
     {
         std::unique_lock<std::mutex> lock1(acks_to_send_lock, std::defer_lock);
         std::unique_lock<std::mutex> lock2(window_lock, std::defer_lock);
+        std::unique_lock<std::mutex> lock3(send_que_lock);
         // sleep(1);
-        std::lock(lock1, lock2);
-        if (acks_to_send.empty())
+        std::lock(lock1, lock2, lock3);
+        if (!window.empty() || !send_que.empty())
         {
             last_received_seq = this->last_received_seq;
             std::chrono::duration<double> diff = std::chrono::system_clock::now() - this->last_ack_time;
@@ -94,6 +95,8 @@ void reliable_channel::send_function()
                     {
                         p.payload[0] = '\0';
                         create_packet(message.first, message.second, last_received_seq, &p, payload);
+                        if(!acks_to_send.empty())
+                            acks_to_send.pop_front();
                         p.payload[0] = '\0';
                         // cout << "sending4\n";
                         serialize_and_send(&p);
@@ -102,14 +105,13 @@ void reliable_channel::send_function()
                 continue;
             }
             {
-                std::unique_lock<std::mutex> lock3(send_que_lock);
-                if (send_que.empty() && window.empty() && sent_fin && got_fin)
-                {
-                    std::unique_lock<std::mutex> lock4(close_lock);
-                    closed_send_thread = 1;
-                    wait_for_close.notify_all();
-                    return;
-                }
+                // if (send_que.empty() && window.empty() && sent_fin && got_fin)
+                // {
+                //     std::unique_lock<std::mutex> lock4(close_lock);
+                //     closed_send_thread = 1;
+                //     wait_for_close.notify_all();
+                //     return;
+                // }
                 if (!send_que.empty())
                 {
                     std::string message = send_que.front();
@@ -118,24 +120,26 @@ void reliable_channel::send_function()
                     // std::cout << "sending message " << message << "\n";
                     payload[0] = '\0';
                     create_packet(message, last_seq, last_received_seq, &p, payload);
+                    if(!acks_to_send.empty())
+                        acks_to_send.pop_front();
                     // cout << "sending3\n";
                     serialize_and_send(&p);
                     // cout << "pushing to window: " << message << " " << last_seq << "\n";
                     window.push_back(std::make_pair(message, last_seq));
                 }
-                else if (active == 0 && sent_fin == 0)
-                {
-                    // cout << "Am intrat aici\n";
-                    sent_fin = 1;
-                    fin_ack_no = ++last_seq;
-                    window.push_back(std::make_pair("", -1));
-                    payload[0] = '\0';
-                    create_packet("", -1, last_received_seq, &p, payload);
-                    // cout << "sending5\n";
-                    serialize_and_send(&p);
+                // else if (active == 0 && sent_fin == 0)
+                // {
+                //     // cout << "Am intrat aici\n";
+                //     sent_fin = 1;
+                //     fin_ack_no = ++last_seq;
+                //     window.push_back(std::make_pair("", -1));
+                //     payload[0] = '\0';
+                //     create_packet("", -1, last_received_seq, &p, payload);
+                //     // cout << "sending5\n";
+                //     serialize_and_send(&p);
 
-                    continue;
-                }
+                //     continue;
+                // }
             }
             diff = std::chrono::system_clock::now() - this->last_ack_time;
             if (diff.count() > WINDOW_RESEND_TIME && !window.empty())
@@ -145,6 +149,8 @@ void reliable_channel::send_function()
                 for (std::pair<std::string, int> message : window)
                 {
                     create_packet(message.first, message.second, last_received_seq, &p, payload);
+                    if(!acks_to_send.empty())
+                        acks_to_send.pop_front();
                     // cout << "sending6: " << message.first << "\n";
                     serialize_and_send(&p);
                 }
@@ -167,14 +173,14 @@ void reliable_channel::receive_function()
     int n;
     for (;;)
     {
-        if (closed_send_thread)
-        {
-            std::unique_lock<std::mutex> lock(close_lock);
-            closed_receive_thread = 1;
-            wait_for_close.notify_all();
-            active = 0;
-            return;
-        }
+        // if (closed_send_thread)
+        // {
+        //     std::unique_lock<std::mutex> lock(close_lock);
+        //     closed_receive_thread = 1;
+        //     wait_for_close.notify_all();
+        //     active = 0;
+        //     return;
+        // }
         // sleep(1);
         memset(receive_buffer, 0, MAX_TRANSMITTED_LEN);
         n = recvfrom(socket, receive_buffer, MAX_TRANSMITTED_LEN, 0, nullptr, nullptr);
